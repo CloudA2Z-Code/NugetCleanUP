@@ -46,9 +46,62 @@ namespace NugetCleanupTest
             // Example: 
             // A.dll path1:path2:path3
             // <Xxx.dll> <path1>:<path2>:<path3>
-            //IncFilelist(strRootpath);
+            FilesinPlaceFileList(strRootpath);
 
 
+            Console.ReadLine();
+        }
+
+        private static void FilesinPlaceFileList(string strRootpath)
+        {
+            List<string> allRootfilesItemList = new List<string>();            
+
+            if (Directory.Exists(strRootpath))
+            {
+                int i = 0;
+                string[] allfileslist = Directory.GetFiles(strRootpath, "*placefile*", SearchOption.AllDirectories);
+                string str1 = string.Empty;
+                bool flag = true;
+                //foreach (var item in allfileslist)
+                //{
+                //    i = i + 1;
+                //    str1 = i.ToString() + "," + item;
+                //    System.Console.WriteLine(str1);
+                //    allRootfilesItemList.Add(str1);
+                //}
+                foreach (string line1 in allfileslist)
+                {
+                    string[] lines = System.IO.File.ReadAllLines(line1);
+                    
+                    // string str1, str2;
+                    // Display the file contents by using a foreach loop.
+                    foreach (var item in lines)
+                    {
+                        StringBuilder stringBuilder = new StringBuilder(item.Length);
+                        int j = 0;
+                        foreach (char c in item)
+                        {
+                            if (c != ' ' || j == 0 || item[j - 1] != ' ')
+                                stringBuilder.Append(c);
+                            j++;
+                        }
+                        str1 = stringBuilder.ToString();
+                        if (!str1.Contains(";"))
+                        {
+                            str1 = str1.Replace(":",",");
+                            allRootfilesItemList.Add(str1);
+                        }                        
+                    }                    
+                }                
+                allfileslist = null;
+                File.WriteAllLines(@"C:\Users\v-gikala\source\repos\NugetCleanupTest\NugetCleanupTest\filesInPlaceFileList.txt", allRootfilesItemList.ToList());
+            }
+            else
+            {
+                Assembly ass = Assembly.GetExecutingAssembly();
+                string path = System.IO.Path.GetDirectoryName(ass.Location);
+                //System.IO.File.Copy(@"\\sccxe-scratch\scratch\v-satvin\IES\InternalBinaryList.txt", @path + @"\InternalBinaryList.txt", true);
+            }
             Console.ReadLine();
         }
 
