@@ -24,16 +24,61 @@ namespace NugetCleanupTest
             {
                 strRootpath = args[0];
             }
-            GetCSprojlistIntoTextFile(strRootpath, allRootfilesItemList);
+            //GetCSprojlistIntoTextFile(strRootpath, allRootfilesItemList);
             //allfileslist = GetCSprojlistIntoTextFile(strRootpath, allRootfilesItemList);
             //Findcorrespondingcsproj(strPath, allCsprojOfNugetsList);
 
+            //Task 1
             // Below Code reads the entry from dirs.proj as for migrated projects we create csproj entry in dirs.proj 
             // CSV List of migrated .csproj,.vcxproj,.mpproj,.wixproj projects
-            InternalBinaryList(strRootpath);
+            //InternalBinaryList(strRootpath);
+
+
+            //Task 2
+            // List of .inc files under a migrated project folders
+            //IncFilelist(strRootpath);
+
+
+            //Task 3
+            // List of files in placefile
+            // Take the Key, Value pairs from each line of placefile Which do not start ';' character
+            // Read the Value seprated by ':' character into below format
+            // Example: 
+            // A.dll path1:path2:path3
+            // <Xxx.dll> <path1>:<path2>:<path3>
+            //IncFilelist(strRootpath);
+
 
             Console.ReadLine();
         }
+
+        private static void IncFilelist(string strRootpath)
+        {
+            List<string> allRootfilesItemList = new List<string>();
+
+            if (Directory.Exists(strRootpath))
+            {
+                int i = 0;
+                string[] allfileslist = Directory.GetFiles(strRootpath, "*.inc", SearchOption.AllDirectories);
+                string str1;
+                foreach (var item in allfileslist)
+                {
+                    i = i + 1;
+                    str1 = i.ToString() +"," + item;
+                    System.Console.WriteLine(str1);
+                    allRootfilesItemList.Add(str1);
+                }                
+                File.WriteAllLines(@"C:\Users\v-gikala\source\repos\NugetCleanupTest\NugetCleanupTest\IncFileList.txt", allRootfilesItemList.ToList());
+            }
+            else
+            {
+                Assembly ass = Assembly.GetExecutingAssembly();
+                string path = System.IO.Path.GetDirectoryName(ass.Location);
+                //System.IO.File.Copy(@"\\sccxe-scratch\scratch\v-satvin\IES\InternalBinaryList.txt", @path + @"\InternalBinaryList.txt", true);
+            }
+            Console.ReadLine();
+        }
+
         private static void InternalBinaryList(string strInputFolderPath)
         {
             List<string> allRootfilesItemList = new List<string>();
