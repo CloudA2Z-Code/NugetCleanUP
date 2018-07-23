@@ -16,6 +16,7 @@ namespace NugetCleanupTest
             string[] allfileslist;
             string strRootpath = @"E:\1ES.SCOMCPY\SystemCenter\Migration\SCOM\src";
             string strPath = @"E:\1ES.SCOMCPY\SystemCenter\Migration\SCOM\src\product\sdk\server\RuntimeService";
+            //string directoryCmdPath = String.Empty;
 
             string[] Outlines;
             List<string> allRootfilesItemList = new List<string>();
@@ -46,15 +47,64 @@ namespace NugetCleanupTest
             // Example: 
             // A.dll path1:path2:path3
             // <Xxx.dll> <path1>:<path2>:<path3>
-            FilesinPlaceFileList(strRootpath);
+            //FilesinPlaceFileList(strRootpath);
 
+            //Task 2
+            // Sources, Makefile, and Makefile.inc cleanup: These files should be deleted from all migrated projects. 
+            // This task should also remove the files.inc related files.
+
+            // Getting the list of all migrated csproj,mpproj,vcxproj etc.
+            List<string> allRootfilesItemList1 = MigratedProjectsList(strRootpath);
+            foreach (var directoryCmdPath in allRootfilesItemList1)
+            {
+                CleanUpTFSFile(strRootpath, directoryCmdPath);
+            }
 
             Console.ReadLine();
+        }
+        // Sources, Makefile, and Makefile.inc & files.inc related files
+        private static void CleanUpTFSFile(string strRootpath, string directoryCmdPath)
+        {
+            DeleteFiles(directoryCmdPath, "sources");
+            DeleteFiles(directoryCmdPath, "Makefile");
+            DeleteFiles(directoryCmdPath, "makefile.inc");
+            //DeleteFiles(directoryCmdPath, "files.inc");
+        }
+        private static void DeleteFiles(string rootpath, string format, Func<string, bool> searchFilterFunc = null)
+        {
+            var csprojfiles = (searchFilterFunc == null) ? Directory.GetFiles(rootpath, format, SearchOption.AllDirectories) :
+                Directory.GetFiles(rootpath, format, SearchOption.AllDirectories).Where(searchFilterFunc);
+            foreach (string csprojfile in csprojfiles)
+            {
+                Console.WriteLine("Deleting {0}", csprojfile);
+                ForceDeleteFile(csprojfile);
+            }
+        }
+        private static void ForceDeleteFile(string filename)
+        {
+            if (!File.Exists(filename))
+            {
+                return;
+            }
+            RemoveReadOnlyFlag(filename);
+            File.Delete(filename);
+        }
+        private static void RemoveReadOnlyFlag(string filename)
+        {
+            if (!File.Exists(filename))
+            {
+                return;
+            }
+            FileAttributes attrs = File.GetAttributes(filename);
+            if (attrs.HasFlag(FileAttributes.ReadOnly))
+            {
+                File.SetAttributes(filename, attrs & ~FileAttributes.ReadOnly);
+            }
         }
 
         private static void FilesinPlaceFileList(string strRootpath)
         {
-            List<string> allRootfilesItemList = new List<string>();            
+            List<string> allRootfilesItemList = new List<string>();
 
             if (Directory.Exists(strRootpath))
             {
@@ -72,7 +122,7 @@ namespace NugetCleanupTest
                 foreach (string line1 in allfileslist)
                 {
                     string[] lines = System.IO.File.ReadAllLines(line1);
-                    
+
                     // string str1, str2;
                     // Display the file contents by using a foreach loop.
                     foreach (var item in lines)
@@ -88,11 +138,11 @@ namespace NugetCleanupTest
                         str1 = stringBuilder.ToString();
                         if (!str1.Contains(";"))
                         {
-                            str1 = str1.Replace(":",",");
+                            str1 = str1.Replace(":", ",");
                             allRootfilesItemList.Add(str1);
-                        }                        
-                    }                    
-                }                
+                        }
+                    }
+                }
                 allfileslist = null;
                 File.WriteAllLines(@"C:\Users\v-gikala\source\repos\NugetCleanupTest\NugetCleanupTest\filesInPlaceFileList.txt", allRootfilesItemList.ToList());
             }
@@ -117,10 +167,10 @@ namespace NugetCleanupTest
                 foreach (var item in allfileslist)
                 {
                     i = i + 1;
-                    str1 = i.ToString() +"," + item;
+                    str1 = i.ToString() + "," + item;
                     System.Console.WriteLine(str1);
                     allRootfilesItemList.Add(str1);
-                }                
+                }
                 File.WriteAllLines(@"C:\Users\v-gikala\source\repos\NugetCleanupTest\NugetCleanupTest\IncFileList.txt", allRootfilesItemList.ToList());
             }
             else
@@ -130,6 +180,50 @@ namespace NugetCleanupTest
                 //System.IO.File.Copy(@"\\sccxe-scratch\scratch\v-satvin\IES\InternalBinaryList.txt", @path + @"\InternalBinaryList.txt", true);
             }
             Console.ReadLine();
+        }
+
+        private static List<string> MigratedProjectsList(string strInputFolderPath)
+        {
+            List<string> allRootfilesItemList = new List<string>();
+            //strInputFolderPath = strInputFolderPath.Remove(strInputFolderPath.Length - 1);
+
+            if (Directory.Exists(strInputFolderPath))
+            {
+                int i = 0;
+                string[] allfileslist = Directory.GetFiles(strInputFolderPath, "*dirs.*", SearchOption.AllDirectories);
+                foreach (string line1 in allfileslist)
+                {
+                    string[] lines = System.IO.File.ReadAllLines(line1);
+                    // string str1, str2;
+                    // Display the file contents by using a foreach loop.
+                    foreach (string line in lines)
+                    {
+                        if (line.Contains(@"<ProjectReference") && !line.Contains(@"!--") && !line.Contains(@"-->") && !line.Contains(@"dirs.proj") && line.Contains(@".csproj"))
+                        {
+                            var line0 = line.Replace(@"<ProjectReference Include=", "").Replace("\t", "").Replace(" ", "").Replace("\"", "").Replace(@"$(SRCROOT)", strInputFolderPath).Replace(@"/>", "");
+                            if (File.Exists(line0))
+                            {
+                                string appPath = System.IO.Path.GetDirectoryName(line0);
+                                allRootfilesItemList.Add(appPath);
+                            }
+                            else
+                            {
+                                System.Console.WriteLine(line0);
+                            }
+                        }
+                    }
+                    allfileslist = null;
+                    File.WriteAllLines(@"C:\Users\v-gikala\source\repos\NugetCleanupTest\NugetCleanupTest\MigratedProjectsList.txt", allRootfilesItemList.ToList());
+                }
+            }
+            else
+            {
+                Assembly ass = Assembly.GetExecutingAssembly();
+                string path = System.IO.Path.GetDirectoryName(ass.Location);
+                //System.IO.File.Copy(@"\\sccxe-scratch\scratch\v-satvin\IES\InternalBinaryList.txt", @path + @"\InternalBinaryList.txt", true);
+            }
+            //Console.ReadLine();
+            return allRootfilesItemList;
         }
 
         private static void InternalBinaryList(string strInputFolderPath)
@@ -237,8 +331,8 @@ namespace NugetCleanupTest
                         }
                         if (line.Contains(@"<ProjectFile") && !line.Contains(@"!--") && !line.Contains(@"-->") && !line.Contains(@"dirs.proj") && line.Contains(@".wixproj"))
                         {
-                            var line0 = line.Replace(@"<ProjectFile Include=", "").Replace("\t", "").Replace(" ", "").Replace("\"", "").Replace(@"$(SRCROOT)", strInputFolderPath).Replace(@"/>", "");                            
-                            line0 = line1.Replace("dirs.proj","")+ line0;                            
+                            var line0 = line.Replace(@"<ProjectFile Include=", "").Replace("\t", "").Replace(" ", "").Replace("\"", "").Replace(@"$(SRCROOT)", strInputFolderPath).Replace(@"/>", "");
+                            line0 = line1.Replace("dirs.proj", "") + line0;
                             if (File.Exists(line0))
                             {
                                 string[] lines1 = System.IO.File.ReadAllLines(line0);
